@@ -1,0 +1,21 @@
+{
+  "name": "claude-code-opsx-workflow",
+  "version": "2.1.0",
+  "description": "Claude Code 五阶段配置驱动开发流程 skill",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/build.js --watch",
+    "test": "node --test test/",
+    "test:setup": "node test/test-setup.js",
+    "test:guards": "node test/test-guards.js",
+    "test:detect": "node test/test-detect.js",
+    "test:install": "node test/test-install.js",
+    "lint": "node scripts/lint.js",
+    "clean": "rm -rf dist/"
+  },
+  "keywords": ["claude-code", "phase-guard", "workflow", "hooks", "openspec", "gstack"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

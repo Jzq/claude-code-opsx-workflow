@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-guard.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/startup-check.js\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-reminder.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
