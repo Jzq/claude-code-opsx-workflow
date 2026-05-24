@@ -42,7 +42,7 @@ test("空项目应报告缺少所有必需文件", () => {
 test("完整项目应通过验证", () => {
   const dir = createFixture("full-project", {
     ".claude/phase-config.json": JSON.stringify({ version: 1, pipeline: { phases: {} }, detection: { strategy: "state-file" } }),
-    ".claude/CLAUDE.md": "# test",
+    "CLAUDE.md": "# test",
     ".claude/karpathy.md": "# test",
     ".claude/settings.json": JSON.stringify({ hooks: {} }),
     ".claude/hooks/lib/phase-detector.js": "// test",

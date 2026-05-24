@@ -7,7 +7,7 @@ BLOCKED: gstack 技能目录不存在。
 请确认 GStack 已正确安装到 ~/.claude/skills/gstack/
 MSG
   echo '{"permissionDecision":"deny","message":"gstack 技能目录缺失，请检查安装。"}'
-  exit 0
+  exit 1
 fi
 
 echo '{}'

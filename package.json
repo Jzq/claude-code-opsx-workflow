@@ -1,6 +1,6 @@
 {
   "name": "claude-code-opsx-workflow",
-  "version": "2.1.0",
+  "version": "1.0.0",
   "description": "Claude Code 五阶段配置驱动开发流程 skill",
   "main": "dist/scripts/install-dependencies.js",
   "bin": {
@@ -13,11 +13,13 @@
     "build": "node scripts/build-dist.js",
     "build:hermes": "node scripts/build-hermes.js",
     "dev": "node scripts/build-dist.js --watch",
-    "test": "node test/test-setup.js && node test/test-detect.js && node test/test-guards.js && node test/test-install.js",
+    "test": "node test/test-setup.js && node test/test-detect.js && node test/test-guards.js && node test/test-install.js && node test/test-reminder.js && node test/test-startup.js",
     "test:setup": "node test/test-setup.js",
     "test:guards": "node test/test-guards.js",
     "test:detect": "node test/test-detect.js",
     "test:install": "node test/test-install.js",
+    "test:reminder": "node test/test-reminder.js",
+    "test:startup": "node test/test-startup.js",
     "lint": "node scripts/lint.js",
     "clean": "rm -rf dist/",
     "prepublishOnly": "npm run build",

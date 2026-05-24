@@ -57,7 +57,10 @@ function checkDependency(dep) {
         const output = run(dep.check_command);
         result.installed = true;
         result.version = output.replace(/^v/, "");
-      } catch {}
+      } catch (e) {
+        // 命令不存在或返回非零，记录 stderr 便于调试
+        result.check_error = (e.stderr || "").slice(0, 200) || e.message;
+      }
       break;
     }
 

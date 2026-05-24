@@ -68,9 +68,9 @@ function main() {
 
   // 执行配置的检查项
   for (const check of checks) {
-    if (typeof check === "object" && !check.name) continue; // 跳过 _comment
-    if (typeof check === "string" && check.startsWith("_")) continue; // 跳过注释
-    if (typeof check === "string") continue; // 跳过纯字符串（可能是注释）
+    // 跳过非对象条目（如 _comment 字符串）
+    if (typeof check !== "object" || !check) continue;
+    if (!check.name) continue;
     results.push(runCheck(check, projectDir));
   }
 

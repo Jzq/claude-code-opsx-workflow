@@ -13,14 +13,23 @@ const path = require("path");
 
 const CONFIG_PATH = ".claude/phase-config.json";
 
+// 进程内配置缓存，避免同一 hook 调用中重复读取文件
+const _configCache = new Map();
+
 /**
- * 加载配置文件
+ * 加载配置文件（进程内缓存，同一路径只读一次）
  */
 function loadConfig(projectDir) {
   const fullPath = path.join(projectDir, CONFIG_PATH);
+  if (_configCache.has(fullPath)) {
+    return _configCache.get(fullPath);
+  }
   try {
-    return JSON.parse(fs.readFileSync(fullPath, "utf-8"));
+    const config = JSON.parse(fs.readFileSync(fullPath, "utf-8"));
+    _configCache.set(fullPath, config);
+    return config;
   } catch {
+    _configCache.set(fullPath, null);
     return null;
   }
 }
@@ -78,7 +87,12 @@ function resolvePath(templatePath, changeDir) {
  * 返回 true/false
  */
 function evaluateCondition(check, projectDir, changeDir) {
-  const filePath = check.path ? path.join(projectDir, resolvePath(check.path, changeDir)) : null;
+  let filePath = null;
+  if (check.path) {
+    const resolved = resolvePath(check.path, changeDir);
+    // changeDir 已经是绝对路径时，resolved 也是绝对路径，不需要再拼 projectDir
+    filePath = resolved.startsWith("/") ? resolved : path.join(projectDir, resolved);
+  }
 
   switch (check.condition) {
     case "no_active_change":
@@ -141,6 +155,18 @@ function detectFilesystem(config, projectDir) {
 }
 
 /**
+ * 校验 phase 值是否在 pipeline.phases 定义范围内
+ */
+function validatePhase(phase, config) {
+  if (typeof phase !== "number" || !Number.isInteger(phase) || phase < 1) return 1;
+  if (config && config.pipeline && config.pipeline.phases) {
+    const validPhases = Object.keys(config.pipeline.phases).map(Number);
+    if (!validPhases.includes(phase)) return 1;
+  }
+  return phase;
+}
+
+/**
  * state-file 策略检测
  */
 function detectStateFile(config, projectDir) {
@@ -150,7 +176,7 @@ function detectStateFile(config, projectDir) {
   try {
     const state = JSON.parse(fs.readFileSync(statePath, "utf-8"));
     return {
-      phase: state.phase || 1,
+      phase: validatePhase(state.phase, config),
       change: state.change || null,
       changeDir: state.changeDir || null,
       reason: state.reason || "",

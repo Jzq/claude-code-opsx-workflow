@@ -10,6 +10,9 @@ const { detectPhase, loadConfig } = require("./lib/phase-detector");
 
 /**
  * 从 guard 配置推导每阶段允许/禁止操作
+ *
+ * 逻辑：遍历所有 guard rules 和 skill_rules，
+ * 匹配当前阶段的归入 forbidden，不匹配的归入 allowed。
  */
 function derivePhaseOps(config, phase) {
   const guardConfig = (config && config.guard) || {};
@@ -21,32 +24,26 @@ function derivePhaseOps(config, phase) {
 
   // 从 guard rules 推导
   for (const rule of rules) {
+    const desc = rule.source_only
+      ? `编辑源码`
+      : rule.command_pattern
+        ? `执行 ${rule.command_pattern.replace(/^\\^/, "").replace(/\$$/, "")} 命令`
+        : `${(rule.tools || []).join("/")}`;
     if (rule.phases && rule.phases.includes(phase)) {
-      const desc = rule.source_only
-        ? `编辑源码`
-        : rule.command_pattern
-          ? `执行 ${rule.command_pattern.replace(/^\\^/, "").replace(/\$$/, "")} 命令`
-          : `${(rule.tools || []).join("/")}`;
       forbidden.push(desc);
+    } else {
+      allowed.push(desc);
     }
   }
 
   // 从 skill_rules 推导
   for (const rule of skillRules) {
+    const desc = `Skill(${(rule.skill_patterns || []).join(", ")})`;
     if (rule.phases && rule.phases.includes(phase)) {
-      forbidden.push(`Skill(${(rule.skill_patterns || []).join(", ")})`);
-    } else if (rule.phases && !rule.phases.includes(phase)) {
-      allowed.push(`Skill(${(rule.skill_patterns || []).join(", ")})`);
+      forbidden.push(desc);
+    } else {
+      allowed.push(desc);
     }
-  }
-
-  // 简单逻辑：源码操作在阶段3+允许
-  if (phase >= 3) {
-    allowed.push("编辑源码");
-    allowed.push("运行测试");
-  }
-  if (phase >= 5) {
-    allowed.push("git commit");
   }
 
   return { allowed: [...new Set(allowed)], forbidden: [...new Set(forbidden)] };
@@ -55,6 +52,7 @@ function derivePhaseOps(config, phase) {
 function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const config = loadConfig(projectDir);
+  // loadConfig 有进程内缓存，detectPhase 内部调用不会重复读文件
   const phaseInfo = detectPhase(projectDir);
 
   const phases = (config && config.pipeline && config.pipeline.phases) || {};

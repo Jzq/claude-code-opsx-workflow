@@ -14,8 +14,8 @@ const fs = require("fs");
 const path = require("path");
 
 const REQUIRED_FILES = [
+  "CLAUDE.md",
   ".claude/phase-config.json",
-  ".claude/CLAUDE.md",
   ".claude/karpathy.md",
   ".claude/settings.json",
   ".claude/hooks/lib/phase-detector.js",
@@ -50,10 +50,11 @@ function main() {
   }
 
   // 验证 phase-config.json
+  let config = null;
   const configPath = path.join(projectDir, ".claude/phase-config.json");
   if (fs.existsSync(configPath)) {
     try {
-      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
 
       // 检查必需字段
       if (!config.pipeline || !config.pipeline.phases) {
@@ -67,7 +68,7 @@ function main() {
       }
 
       // 验证 detection 策略的子配置
-      const strategy = config.detection.strategy;
+      const strategy = config.detection.strategy || "";
       if (strategy === "filesystem" && !config.detection.filesystem) {
         warnings.push("detection.strategy=filesystem 但缺少 detection.filesystem 配置");
       }
@@ -168,17 +169,10 @@ function main() {
   }
 
   // 检查 state-file 策略的状态文件（仅提示）
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      if (config.detection && config.detection.strategy === "state-file") {
-        const statePath = path.join(projectDir, config.detection.state_file.path);
-        if (!fs.existsSync(statePath)) {
-          warnings.push("state-file 策略的状态文件尚未创建（首次运行将自动生成）");
-        }
-      }
-    } catch {
-      // 已在上面处理
+  if (config && config.detection && config.detection.strategy === "state-file" && config.detection.state_file) {
+    const statePath = path.join(projectDir, config.detection.state_file.path || ".claude/phase-state.json");
+    if (!fs.existsSync(statePath)) {
+      warnings.push("state-file 策略的状态文件尚未创建（首次运行将自动生成）");
     }
   }
 

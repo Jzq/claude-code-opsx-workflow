@@ -13,8 +13,14 @@
 const path = require("path");
 const fs = require("fs");
 
-const projectDir = process.argv[2] || ".";
-const detectorPath = path.join(projectDir, ".claude/hooks/lib/phase-detector.js");
+const projectDir = path.resolve(process.argv[2] || ".");
+const detectorPath = path.resolve(path.join(projectDir, ".claude/hooks/lib/phase-detector.js"));
+
+// 路径校验：确保 detectorPath 在 projectDir 内，防止路径穿越
+if (!detectorPath.startsWith(projectDir + path.sep)) {
+  process.stderr.write(`ERROR: 检测器路径不合法: ${detectorPath}\n`);
+  process.exit(1);
+}
 
 if (!fs.existsSync(detectorPath)) {
   // 无 phase-detector.js，输出最小结果

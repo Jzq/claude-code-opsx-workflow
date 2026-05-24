@@ -8,6 +8,7 @@
  * 危险命令拦截也在此处理（当 guard.dangerous_commands.enabled=true 时）。
  */
 
+const path = require("path");
 const { detectPhase, loadConfig } = require("./lib/phase-detector");
 
 /**
@@ -20,13 +21,18 @@ function getPhaseName(config, phase) {
 }
 
 /**
- * 构建源码路径正则数组
+ * 构建源码路径正则数组（锚定匹配，避免误匹配）
  */
 function getSourcePatterns(config) {
   const patterns = (config && config.source_patterns) || [];
   return patterns
     .filter((p) => typeof p === "string" && !p.startsWith("_"))
-    .map((p) => new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, (c) => (c === "/" ? "\\/" : "\\" + c))));
+    .map((p) => {
+      // 转义正则特殊字符
+      const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, (c) => (c === "/" ? "\\/" : "\\" + c));
+      // 锚定：匹配 /pattern/ 或以 pattern/ 开头的路径段
+      return new RegExp(`(^|\\/)${escaped}`);
+    });
 }
 
 function isSourceCode(filePath, config) {
@@ -34,7 +40,9 @@ function isSourceCode(filePath, config) {
   // 排除 openspec/ 和 .claude/ 目录
   if (filePath.includes("/openspec/") || filePath.includes("/.claude/")) return false;
   const patterns = getSourcePatterns(config);
-  return patterns.length === 0 || patterns.some((p) => p.test(filePath));
+  // 无 patterns 时所有文件都不是源码，守卫不拦截
+  if (patterns.length === 0) return false;
+  return patterns.some((p) => p.test(filePath));
 }
 
 function deny(phaseInfo, config, message) {
@@ -61,14 +69,15 @@ function main() {
   if (guardConfig.dangerous_commands && guardConfig.dangerous_commands.enabled) {
     if (toolName === "Bash") {
       const cmd = (toolInput.command || "").trim();
-      for (const { pattern, reason } of guardConfig.dangerous_commands.patterns) {
+      for (const item of guardConfig.dangerous_commands.patterns) {
+        if (!item || typeof item.pattern !== "string") continue;
         try {
-          if (new RegExp(pattern).test(cmd)) {
-            process.stderr.write(`BLOCKED: ${reason}\n命令：${cmd}\n`);
+          if (new RegExp(item.pattern).test(cmd)) {
+            process.stderr.write(`BLOCKED: ${item.reason || "危险命令"}\n命令：${cmd}\n`);
             process.exit(1);
           }
-        } catch {
-          // 正则语法错误，跳过
+        } catch (e) {
+          process.stderr.write(`WARNING: 危险命令正则编译失败，安全保护已跳过: pattern="${item.pattern}" error=${e.message}\n`);
         }
       }
     }
@@ -81,9 +90,16 @@ function main() {
     // 检查 skill_routing（如 GStack 检查）
     if (config && config.skill_routing && config.skill_routing.enabled && config.skill_routing.check_script) {
       const checkScript = config.skill_routing.check_script;
+      // 校验脚本路径在项目目录内，防止路径穿越
+      const resolvedScript = path.resolve(projectDir, checkScript);
+      if (!resolvedScript.startsWith(path.resolve(projectDir) + path.sep)) {
+        deny(phaseInfo, config, `Skill 路由检查脚本路径不合法: ${checkScript}`);
+        return;
+      }
       try {
         const { execSync } = require("child_process");
-        execSync(`bash "${checkScript}"`, {
+        // 使用数组参数避免 shell 注入
+        execSync("bash", [resolvedScript], {
           cwd: projectDir,
           env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, HOME: process.env.HOME },
           encoding: "utf-8",
